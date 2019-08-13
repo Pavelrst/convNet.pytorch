@@ -9,6 +9,13 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from utils.mixup import MixUp
 
+# Targeted dropout imports
+from targettedDropout import targeted_unit_dropout
+from targettedDropout import targeted_weight_dropout
+from targettedDropout import ramping_targeted_unit_dropout
+from targettedDropout import ramping_targeted_weight_dropout
+# end imports
+
 __all__ = ['resnet', 'resnet_se']
 
 
@@ -60,7 +67,9 @@ class BasicBlock(nn.Module):
         self.residual_block = residual_block
         self.stride = stride
         self.expansion = expansion
-        self.dropout = nn.Dropout(dropout)
+        #self.dropout = nn.Dropout(dropout)
+        #self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
+
 
     def forward(self, x):
         residual = x
