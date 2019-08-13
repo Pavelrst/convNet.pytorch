@@ -42,7 +42,20 @@ class targeted_weight_dropout(_targetedDropout):
         print("targeted_weight_dropout called")
         '''
         Add your code here.
+        0) Reshape - remove redundant dimensions.
+        1) w_abs = abs(input)
+        2) For each column in w_abs calc the threshold.
+        3) Perform dropout only in training mode.
+        4) mask_1 = Matrix of {True/False} same shape as w_abs  
+            (if value if bigger or smaller than it's column threshold)
+            As a result all elements which are 'False' 
+            - protected from being dropped out. 
+        5) mask_2 = matrix of {True/False} of (Uni < drop_rate)
+        6) final_mask = mask_1 LOGIC_AND mask_2.
+        7) out_w = (1-mask) * w_abs
+        8) Nessecary reshapes  
         '''
+
         return F.dropout(input, self.p, self.training, self.inplace)
 
 class targeted_unit_dropout(_targetedDropout):
