@@ -40,7 +40,11 @@ class targeted_weight_dropout(_targetedDropout):
     def forward(self,input):
         # TODO: need to be implemented
         print("targeted_weight_dropout called")
+        print(input.shape)
         '''
+        Notice the dimensionality of input tensor. 
+        
+        
         Add your code here.
         0) Reshape - remove redundant dimensions.
         1) w_abs = abs(input)
