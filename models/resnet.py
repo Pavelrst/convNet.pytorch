@@ -10,10 +10,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from utils.mixup import MixUp
 
 # Targeted dropout imports
-from targettedDropout import targeted_unit_dropout
-from targettedDropout import targeted_weight_dropout
-from targettedDropout import ramping_targeted_unit_dropout
-from targettedDropout import ramping_targeted_weight_dropout
+from targetedDropout import targeted_unit_dropout
+from targetedDropout import targeted_weight_dropout
+from targetedDropout import ramping_targeted_unit_dropout
+from targetedDropout import ramping_targeted_weight_dropout
 # end imports
 
 __all__ = ['resnet', 'resnet_se']
@@ -68,7 +68,7 @@ class BasicBlock(nn.Module):
         self.stride = stride
         self.expansion = expansion
         #self.dropout = nn.Dropout(dropout)
-        #self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
+        self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
 
 
     def forward(self, x):
@@ -108,7 +108,8 @@ class Bottleneck(nn.Module):
             planes, planes * expansion, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * expansion)
         self.relu = nn.ReLU(inplace=True)
-        self.dropout = nn.Dropout(dropout)
+        #self.dropout = nn.Dropout(dropout)
+        self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
         self.downsample = downsample
         self.residual_block = residual_block
         self.stride = stride
