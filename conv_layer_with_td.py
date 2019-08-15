@@ -32,11 +32,10 @@ class Conv2d_with_td(_ConvNd):
         self.dropout_fn = dropout_fn
 
     def forward(self, input):
-        if self.dropout_fn is not None:
+        if self.dropout_fn is not None and self.training:
             dropped_w = self.dropout_fn(self.weight)
         else:
             dropped_w = self.weight
-
         if self.padding_mode == 'circular':
             expanded_padding = ((self.padding[1] + 1) // 2, self.padding[1] // 2,
                                 (self.padding[0] + 1) // 2, self.padding[0] // 2)
