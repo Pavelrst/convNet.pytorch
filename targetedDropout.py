@@ -1,3 +1,4 @@
+import torch
 from torch.nn.modules import Module
 from torch.nn import functional as F
 
@@ -17,8 +18,7 @@ from torch.nn import functional as F
 #     w = tf.reshape(w, w_shape)
 #     return w
 #
-#   mask = tf.to_float(
-#       tf.logical_and(tf.random_uniform(tf.shape(w)) < drop_rate, mask))
+#   mask = tf.to_float(tf.logical_and(tf.random_uniform(tf.shape(w)) < drop_rate, mask))
 #   w = (1. - mask) * w
 #   w = tf.reshape(w, w_shape)
 #   return w
@@ -40,27 +40,73 @@ class targeted_weight_dropout(_targetedDropout):
     def forward(self,input):
         # TODO: need to be implemented
         print("targeted_weight_dropout called")
-        print(input.shape)
-        '''
-        Notice the dimensionality of input tensor. 
-        
-        
-        Add your code here.
-        0) Reshape - remove redundant dimensions.
-        1) w_abs = abs(input)
-        2) For each column in w_abs calc the threshold.
-        3) Perform dropout only in training mode.
-        4) mask_1 = Matrix of {True/False} same shape as w_abs  
-            (if value if bigger or smaller than it's column threshold)
-            As a result all elements which are 'False' 
-            - protected from being dropped out. 
-        5) mask_2 = matrix of {True/False} of (Uni < drop_rate)
-        6) final_mask = mask_1 LOGIC_AND mask_2.
-        7) out_w = (1-mask) * w_abs
-        8) Nessecary reshapes  
-        '''
 
-        return F.dropout(input, self.p, self.training, self.inplace)
+        torch.set_printoptions(threshold=5000)
+        torch.set_printoptions(precision=2)
+
+        # Reshape - remove redundant dimensions.
+        # weight: (out_channels , in_channels , kH , kW)
+        # New matrix shape will be:
+        # ( in_channels * kH * kW , out_channels )
+        initial_shape = input.shape
+
+        input = input.view(initial_shape[0], -1)
+        print("input=\n", input)
+        #print("after reshape - ", input.shape)
+
+        # w_abs = abs(input)
+        input = torch.abs(input)
+        input = torch.t(input)
+        #print("after transpose - ", input.shape)
+
+        idx = int(self.targeted_percentage * input.shape[0])
+        #print("idx = ", idx)
+
+        sorted = torch.sort(input, dim=0)
+
+        # For each column in w_abs calc the threshold.
+        threshoulds = sorted[0][int(idx)].repeat(input.shape[0], 1)
+        #print("threshoulds shape", threshoulds.shape)
+
+        #4) mask_1 = Matrix of {True/False} same shape as w_abs
+        # (if value if bigger or smaller than it's column threshold)
+        # As a result all elements which are 'False'
+        # - protected from being dropped out.
+        mask = torch.where(input > threshoulds, torch.zeros(input.shape), torch.ones(input.shape))
+
+        print("mask1=\n", mask)
+
+        # TODO: TBD!!!
+        #   if not is_training:
+        #     w = (1. - tf.to_float(mask)) * w
+        #     w = tf.reshape(w, w_shape)
+        #     return w
+
+        # mask_2 = matrix of {True/False} of (Uni < drop_rate)
+        mask_2 = torch.where(torch.empty(input.shape).uniform_(0.1) > self.p,
+                             torch.zeros(input.shape), torch.ones(input.shape))
+
+        print("mask2=\n", mask_2)
+
+        # final_mask = mask_1 LOGIC_AND mask_2.
+        #final_mask = (1 - (mask.byte() & mask_2.byte())).double()
+        final_mask = (1 - (mask.byte() & mask_2.byte())).double().float()
+
+        out_w = input.float() * final_mask
+
+        #if initial_shape != torch.Size([16, 16, 3, 3]):
+        #    print("AAAAAA")
+
+        print("output=\n", out_w)
+        out_w = torch.t(out_w)
+        out_w = out_w.view(initial_shape)
+
+        #print("input=\n", input)
+
+
+        exit(-1)
+        #return F.dropout(input, self.p, self.training, self.inplace)
+        return out_w
 
 class targeted_unit_dropout(_targetedDropout):
     '''
