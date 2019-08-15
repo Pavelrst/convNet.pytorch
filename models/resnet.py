@@ -87,7 +87,7 @@ class BasicBlock(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = self.dropout(out)
+        # out = self.dropout(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
@@ -109,17 +109,16 @@ class Bottleneck(nn.Module):
     def __init__(self, inplanes, planes,  stride=1, expansion=4, downsample=None, groups=1, residual_block=None, dropout=0.):
         super(Bottleneck, self).__init__()
         dropout = 0 if dropout is None else dropout
-        self.conv1 = nn.Conv2d(
-            inplanes, planes, kernel_size=1, bias=False)
+        self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
+
+        self.conv1 = Conv2d_with_td(inplanes, planes, kernel_size=1, bias=False , dropout_fn=self.dropout)
         self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = conv3x3(planes, planes, stride=stride, groups=groups)
+        self.conv2 = conv3x3(planes, planes, stride=stride, groups=groups , dropout_fn=self.dropout)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = nn.Conv2d(
-            planes, planes * expansion, kernel_size=1, bias=False)
+        self.conv3 = nn.Conv2d(planes, planes * expansion, kernel_size=1, bias=False , dropout_fn = self.dropout)
         self.bn3 = nn.BatchNorm2d(planes * expansion)
         self.relu = nn.ReLU(inplace=True)
         #self.dropout = nn.Dropout(dropout)
-        self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
         self.downsample = downsample
         self.residual_block = residual_block
         self.stride = stride
