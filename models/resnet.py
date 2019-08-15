@@ -14,14 +14,20 @@ from targetedDropout import targeted_unit_dropout
 from targetedDropout import targeted_weight_dropout
 from targetedDropout import ramping_targeted_unit_dropout
 from targetedDropout import ramping_targeted_weight_dropout
+
+from conv_layer_with_td import Conv2d_with_td
 # end imports
 
 __all__ = ['resnet', 'resnet_se']
 
 
-def conv3x3(in_planes, out_planes, stride=1, groups=1, bias=False):
+def conv3x3(in_planes, out_planes, stride=1, groups=1, bias=False, dropout_fn=None):
     "3x3 convolution with padding"
-    return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
+    if dropout_fn is not None:
+        return Conv2d_with_td(in_planes, out_planes, kernel_size=3, stride=stride,
+                     padding=1, groups=groups, bias=bias, dropout_fn=dropout_fn)
+    else:
+        return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride,
                      padding=1, groups=groups, bias=bias)
 
 
@@ -57,18 +63,22 @@ class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes,  stride=1, expansion=1,
                  downsample=None, groups=1, residual_block=None, dropout=0.):
         super(BasicBlock, self).__init__()
+
+        # Define the dropout object
         dropout = 0 if dropout is None else dropout
-        self.conv1 = conv3x3(inplanes, planes, stride, groups=groups)
+        self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
+
+        self.conv1 = conv3x3(inplanes, planes, stride, groups=groups, dropout_fn=self.dropout)
         self.bn1 = nn.BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, expansion * planes, groups=groups)
+        self.conv2 = conv3x3(planes, expansion * planes, groups=groups, dropout_fn=self.dropout)
         self.bn2 = nn.BatchNorm2d(expansion * planes)
         self.downsample = downsample
         self.residual_block = residual_block
         self.stride = stride
         self.expansion = expansion
         #self.dropout = nn.Dropout(dropout)
-        self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
+
 
 
     def forward(self, x):
@@ -120,12 +130,12 @@ class Bottleneck(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = self.dropout(out)
+        #out = self.dropout(out)
 
         out = self.conv2(out)
         out = self.bn2(out)
         out = self.relu(out)
-        out = self.dropout(out)
+        #out = self.dropout(out)
 
         out = self.conv3(out)
         out = self.bn3(out)
