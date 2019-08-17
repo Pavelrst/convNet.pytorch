@@ -16,7 +16,7 @@ It is based off [imagenet example in pytorch](https://github.com/pytorch/example
  
  To clone:
  ```
- git clone --recursive https://github.com/eladhoffer/convNet.pytorch
+ git clone --recursive https://github.com/Pavelrst/targeted_dropout_pytorch.git
  ```
  
  example for efficient multi-gpu training of resnet50 (4 gpus, label-smoothing, fast regime by fast-ai):
