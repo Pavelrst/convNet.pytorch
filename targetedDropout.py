@@ -1,6 +1,7 @@
 import torch
 from torch.nn.modules import Module
 from torch.nn import functional as F
+import  numpy as np
 
 # def targeted_weight_dropout(w, params, is_training):
 #   drop_rate = params.drop_rate
@@ -38,11 +39,11 @@ class _targetedDropout(Module):
 
 class targeted_weight_dropout(_targetedDropout):
     def forward(self,input):
-        # TODO: need to be implemented
-        print("targeted_weight_dropout called")
-
-        torch.set_printoptions(threshold=5000)
-        torch.set_printoptions(precision=2)
+        Test = False
+        if Test:
+            torch.set_printoptions(threshold=5000)
+            torch.set_printoptions(precision=2)
+            self.p = 1
 
         # Reshape - remove redundant dimensions.
         # weight: (out_channels , in_channels , kH , kW)
@@ -51,30 +52,17 @@ class targeted_weight_dropout(_targetedDropout):
         initial_shape = input.shape
 
         input = input.view(initial_shape[0], -1)
-        print("input=\n", input)
-        #print("after reshape - ", input.shape)
-
-        # w_abs = abs(input)
         input = torch.abs(input)
         input = torch.t(input)
-        #print("after transpose - ", input.shape)
 
         idx = int(self.targeted_percentage * input.shape[0])
-        #print("idx = ", idx)
-
         sorted = torch.sort(input, dim=0)
 
         # For each column in w_abs calc the threshold.
         threshoulds = sorted[0][int(idx)].repeat(input.shape[0], 1)
-        #print("threshoulds shape", threshoulds.shape)
 
-        #4) mask_1 = Matrix of {True/False} same shape as w_abs
-        # (if value if bigger or smaller than it's column threshold)
-        # As a result all elements which are 'False'
-        # - protected from being dropped out.
+        # As a result all elements which are '0' - protected from being dropped out.
         mask = torch.where(input > threshoulds, torch.zeros(input.shape), torch.ones(input.shape))
-
-        print("mask1=\n", mask)
 
         # TODO: TBD!!!
         #   if not is_training:
@@ -82,31 +70,53 @@ class targeted_weight_dropout(_targetedDropout):
         #     w = tf.reshape(w, w_shape)
         #     return w
 
-        # mask_2 = matrix of {True/False} of (Uni < drop_rate)
+        # mask_2 = matrix of {1/0} of (Uni < drop_rate)
         mask_2 = torch.where(torch.empty(input.shape).uniform_(0.1) > self.p,
                              torch.zeros(input.shape), torch.ones(input.shape))
 
-        print("mask2=\n", mask_2)
-
         # final_mask = mask_1 LOGIC_AND mask_2.
-        #final_mask = (1 - (mask.byte() & mask_2.byte())).double()
         final_mask = (1 - (mask.byte() & mask_2.byte())).double().float()
 
         out_w = input.float() * final_mask
 
-        #if initial_shape != torch.Size([16, 16, 3, 3]):
-        #    print("AAAAAA")
+        if Test:
+            self.self_test(input, out_w, threshoulds)
 
-        print("output=\n", out_w)
         out_w = torch.t(out_w)
         out_w = out_w.view(initial_shape)
 
-        #print("input=\n", input)
-
-
-        exit(-1)
-        #return F.dropout(input, self.p, self.training, self.inplace)
         return out_w
+
+    def self_test(self, w_in, w_out, thresholds):
+        '''
+        :param w_in: tensor of shape ( in_channels * kH * kW , out_channels )
+        :param w_out: tensor of shape ( in_channels * kH * kW , out_channels )
+        :return: Pass / Fail
+        '''
+        w_in = w_in.detach().numpy()
+        w_out = w_out.detach().numpy()
+
+        thresholds = thresholds[0, :].detach().numpy()
+        thresholds_list = []
+
+        idx = int(self.targeted_percentage * len(w_in[:, 0]))
+        for col in range(w_in.shape[1]):
+            thresh = sorted(w_in[:, col])[idx]
+            thresholds_list.append(thresh)
+            for row in range(w_in.shape[0]):
+                if w_in[row][col] <= thresh:
+                    # Drops with no respect to self.p
+                    w_in[row][col] = 0
+
+        thresholds_list = np.array(thresholds_list)
+
+        if np.array_equal(thresholds, thresholds_list) and np.array_equal(w_in, w_out):
+            print("Test passed")
+        elif np.allclose(thresholds, thresholds_list) and np.allclose(w_in, w_out):
+            print("Test passed - with respect to tolerance")
+        else:
+            print("Test FAILED")
+
 
 class targeted_unit_dropout(_targetedDropout):
     '''
