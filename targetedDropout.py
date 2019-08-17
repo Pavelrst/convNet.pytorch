@@ -38,7 +38,7 @@ class _targetedDropout(Module):
         return 'dropRate={} , targetedPercentage={} , inplace={}'.format(self.drop_rate,self.targeted_percentage,self.inplace)
 
 class targeted_weight_dropout(_targetedDropout):
-    def forward(self,input):
+    def forward(self,input, is_training):
         Test = False
         if Test:
             torch.set_printoptions(threshold=5000)
@@ -64,11 +64,15 @@ class targeted_weight_dropout(_targetedDropout):
         # As a result all elements which are '0' - protected from being dropped out.
         mask = torch.where(input > threshoulds, torch.zeros(input.shape), torch.ones(input.shape))
 
-        # TODO: TBD!!!
-        #   if not is_training:
-        #     w = (1. - tf.to_float(mask)) * w
-        #     w = tf.reshape(w, w_shape)
-        #     return w
+
+        if not is_training:
+            # When not training we set to zero all weights
+            # which are less than threshold, as it would be
+            # if the model was pruned.
+            # TODO: This code is not tested.
+            out_w = (1 - mask) * input
+            out_w = out_w.view(initial_shape)
+            return out_w
 
         # mask_2 = matrix of {1/0} of (Uni < drop_rate)
         mask_2 = torch.where(torch.empty(input.shape).uniform_(0.1) > self.p,
