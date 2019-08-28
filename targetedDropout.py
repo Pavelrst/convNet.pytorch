@@ -39,8 +39,6 @@ class _targetedDropout(Module):
 
 class targeted_weight_dropout(_targetedDropout):
     def forward(self,input, is_training):
-        print("AAAAAAAAAAAAAAA")
-        exit(-1)
         Test = False
         if Test:
             torch.set_printoptions(threshold=5000)
