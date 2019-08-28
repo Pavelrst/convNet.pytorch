@@ -39,6 +39,8 @@ class _targetedDropout(Module):
 
 class targeted_weight_dropout(_targetedDropout):
     def forward(self,input, is_training):
+        print("AAAAAAAAAAAAAAA")
+        exit(-1)
         Test = False
         if Test:
             torch.set_printoptions(threshold=5000)
@@ -121,19 +123,27 @@ class targeted_weight_dropout(_targetedDropout):
         else:
             print("Test FAILED")
 
-
 class targeted_unit_dropout(_targetedDropout):
     '''
     Unit - i.e. a column of a matrix.
     The threshold is calculated by... 
     '''
-    def forward(self, input):
-        # TODO: need to be implemented
-        print("targeted_unit_dropout called")
-        '''
-        Add your code here.
-        '''
-        return F.dropout(input, self.p, self.training, self.inplace)
+    def forward(self, input , isTraining):
+        initial_shape = input.shape
+        input = input.view(initial_shape[0], -1)
+        norm = input.norm(dim=0)
+        idx = int(self.targeted_percentage * input.shape[1])
+        sorted_norms = torch.sort(norm)[0]
+        threshold = sorted_norms[idx]
+        mask = torch.where(norm > threshold, torch.zeros(norm.shape), torch.ones(norm.shape))
+        mask = mask.repeat((input.shape[0] , 1))
+        tmp = 1 - self.p < torch.empty(input.shape).uniform_(0.1)
+        mask_temp = torch.where((tmp.byte() & mask.byte()),
+                             torch.zeros(input.shape), torch.ones(input.shape))
+        final_mask = (1 - mask_temp)
+        after_dropout = final_mask * input
+        final_weights = after_dropout.view(initial_shape)
+        return final_weights
 
 class ramping_targeted_weight_dropout(_targetedDropout):
     '''
