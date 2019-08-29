@@ -1,0 +1,1 @@
+python main.py --dataset cifar10 --model resnet --device cpu --epochs 2
