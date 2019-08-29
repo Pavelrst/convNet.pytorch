@@ -55,8 +55,7 @@ class targeted_weight_dropout(_targetedDropout):
             return out_w
 
         # mask_2 = matrix of {1/0} of (Uni < drop_rate)
-        mask_2 = torch.where(torch.empty(input.shape).uniform_(0.1) > self.p,
-                             torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device))
+        mask_2 = torch.where(torch.empty(input.shape).uniform_(0.1).to(self.device) > self.p, torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device))
 
         # final_mask = mask_1 LOGIC_AND mask_2.
         final_mask = (1 - (mask.byte() & mask_2.byte())).double().float()
@@ -111,15 +110,15 @@ class targeted_unit_dropout(_targetedDropout):
     # ( out_channels, in_channels * kH * kW )
     '''
     def forward(self, input , is_training):
-        Test = True
+        Test = False
         initial_shape = input.shape
         input = input.view(initial_shape[0], -1)
         norm = input.norm(dim=1)
         idx = int(self.targeted_percentage * input.shape[0])
         sorted_norms = torch.sort(norm)[0]
         threshold = sorted_norms[idx]
-        mask = torch.where(norm > threshold, torch.zeros(norm.shape).to(self.device), torch.ones(norm.shape).to(self.device))
-        mask = torch.t(mask.repeat(input.shape[1] , 1))
+        mask = torch.where(norm.to(self.device) > threshold.to(self.device), torch.zeros(norm.shape).to(self.device), torch.ones(norm.shape).to(self.device))
+        mask = torch.t(mask.repeat(input.shape[1] , 1)).to(self.device)
 
         if not is_training:
             # When not training we set to zero all weights
@@ -130,10 +129,11 @@ class targeted_unit_dropout(_targetedDropout):
             out_w = out_w.view(initial_shape)
             return out_w
 
-        tmp = 1 - self.p < torch.empty(input.shape).uniform_(0.1)
+        tmp = (1 - self.p < torch.empty(input.shape).uniform_(0.1)).to(self.device)
         mask_temp = torch.where((tmp.byte() & mask.byte()),
-                             torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device))
-        after_dropout = mask_temp * input
+                             torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device)).to(self.device)
+
+        after_dropout = mask_temp * input.to(self.device)
 
         if Test:
             self.self_test(input, after_dropout, threshold)
