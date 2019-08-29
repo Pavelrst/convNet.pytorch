@@ -181,7 +181,6 @@ def main_worker(args):
 
     if args.model_config is not '':
         model_config = dict(model_config, **literal_eval(args.model_config))
-
     model = model(**model_config)
     logging.info("created model with configuration: %s", model_config)
     num_parameters = sum([l.nelement() for l in model.parameters()])

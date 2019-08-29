@@ -61,12 +61,15 @@ def weight_decay_config(value=1e-4, log=False):
 class BasicBlock(nn.Module):
 
     def __init__(self, inplanes, planes,  stride=1, expansion=1,
-                 downsample=None, groups=1, residual_block=None, dropout=0.):
+                 downsample=None, groups=1, residual_block=None, dropout=0. , dropout_type = None, drop_percentage = 0. , dev = 'cpu'):
         super(BasicBlock, self).__init__()
-
         # Define the dropout object
         dropout = 0 if dropout is None else dropout
-        self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
+
+        if   dropout_type == 'weight':
+            self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=drop_percentage , device = dev)
+        elif dropout_type == 'unit':
+            self.dropout = targeted_unit_dropout(drop_rate=dropout  ,targeted_percentage= drop_percentage , device = dev)
 
         self.conv1 = conv3x3(inplanes, planes, stride, groups=groups, dropout_fn=self.dropout)
         self.bn1 = nn.BatchNorm2d(planes)
@@ -106,10 +109,15 @@ class BasicBlock(nn.Module):
 
 class Bottleneck(nn.Module):
 
-    def __init__(self, inplanes, planes,  stride=1, expansion=4, downsample=None, groups=1, residual_block=None, dropout=0.):
+    def __init__(self, inplanes, planes,  stride=1, expansion=4, downsample=None, groups=1, residual_block=None, dropout=0.,
+                 dropout_type=None, drop_percentage=0. , dev = 'cpu'):
         super(Bottleneck, self).__init__()
         dropout = 0 if dropout is None else dropout
-        self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=0.7)
+
+        if dropout_type == 'weight':
+            self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=drop_percentage , device = dev)
+        elif dropout_type == 'unit':
+            self.dropout = targeted_unit_dropout(drop_rate=dropout, targeted_percentage=drop_percentage   , device = dev)
 
         self.conv1 = Conv2d_with_td(inplanes, planes, kernel_size=1, bias=False , dropout_fn=self.dropout)
         self.bn1 = nn.BatchNorm2d(planes)
@@ -156,7 +164,8 @@ class ResNet(nn.Module):
     def __init__(self):
         super(ResNet, self).__init__()
 
-    def _make_layer(self, block, planes, blocks, expansion=1, stride=1, groups=1, residual_block=None, dropout=None, mixup=False):
+    def _make_layer(self, block, planes, blocks, expansion=1, stride=1, groups=1, residual_block=None, dropout=None, mixup=False,
+                    dp_type = None , dp_percentage = None , dev = 'cpu'):
         downsample = None
         out_planes = planes * expansion
         if stride != 1 or self.inplanes != out_planes:
@@ -170,11 +179,13 @@ class ResNet(nn.Module):
 
         layers = []
         layers.append(block(self.inplanes, planes, stride, expansion=expansion,
-                            downsample=downsample, groups=groups, residual_block=residual_block, dropout=dropout))
+                            downsample=downsample, groups=groups, residual_block=residual_block, dropout=dropout,
+                            dropout_type = dp_type , drop_percentage = dp_percentage , dev = dev))
         self.inplanes = planes * expansion
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes, expansion=expansion, groups=groups,
-                                residual_block=residual_block, dropout=dropout))
+                                residual_block=residual_block, dropout=dropout,
+                                dropout_type = dp_type , drop_percentage = dp_percentage , dev = dev))
         if mixup:
             layers.append(MixUp())
         return nn.Sequential(*layers)
@@ -204,7 +215,9 @@ class ResNet_imagenet(ResNet):
     def __init__(self, num_classes=1000, inplanes=64,
                  block=Bottleneck, residual_block=None, layers=[3, 4, 23, 3],
                  width=[64, 128, 256, 512], expansion=4, groups=[1, 1, 1, 1],
-                 regime='normal', scale_lr=1, checkpoint_segments=0, mixup=False):
+                 regime='normal', scale_lr=1, checkpoint_segments=0, mixup=False,
+                 dp_type=None, dp_percentage=None , dev = 'cpu'
+                 ):
         super(ResNet_imagenet, self).__init__()
         self.inplanes = inplanes
         self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3,
@@ -216,7 +229,7 @@ class ResNet_imagenet(ResNet):
         for i in range(len(layers)):
             layer = self._make_layer(block=block, planes=width[i], blocks=layers[i], expansion=expansion,
                                      stride=1 if i == 0 else 2, residual_block=residual_block, groups=groups[i],
-                                     mixup=mixup)
+                                     mixup=mixup, dp_type = dp_type , dp_percentage = dp_percentage , device = dev)
             if checkpoint_segments > 0:
                 layer_checkpoint_segments = min(checkpoint_segments, layers[i])
                 layer = CheckpointModule(layer, layer_checkpoint_segments)
@@ -280,7 +293,8 @@ class ResNet_cifar(ResNet):
 
     def __init__(self, num_classes=10, inplanes=16,
                  block=BasicBlock, depth=18, width=[16, 32, 64],
-                 groups=[1, 1, 1], residual_block=None, regime='normal', dropout=None, mixup=False):
+                 groups=[1, 1, 1], residual_block=None, regime='normal', dropout=None, mixup=False , dp_type = None , dp_percentage = None,
+                 device='cpu'):
         super(ResNet_cifar, self).__init__()
         self.inplanes = inplanes
         n = int((depth - 2) / 6)
@@ -290,12 +304,12 @@ class ResNet_cifar(ResNet):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = lambda x: x
 
-        self.layer1 = self._make_layer(block, width[0], n, groups=groups[
-                                       0], residual_block=residual_block, dropout=dropout, mixup=mixup)
+        self.layer1 = self._make_layer(
+            block, width[0], n, groups=groups[0], residual_block=residual_block, dropout=dropout, mixup=mixup           , dp_type = dp_type , dp_percentage = dp_percentage , dev = device)
         self.layer2 = self._make_layer(
-            block, width[1], n, stride=2, groups=groups[1], residual_block=residual_block, dropout=dropout, mixup=mixup)
+            block, width[1], n, stride=2, groups=groups[1], residual_block=residual_block, dropout=dropout, mixup=mixup , dp_type = dp_type , dp_percentage = dp_percentage , dev = device)
         self.layer3 = self._make_layer(
-            block, width[2], n, stride=2, groups=groups[2], residual_block=residual_block, dropout=dropout, mixup=mixup)
+            block, width[2], n, stride=2, groups=groups[2], residual_block=residual_block, dropout=dropout, mixup=mixup , dp_type = dp_type , dp_percentage = dp_percentage , dev = device)
         self.layer4 = lambda x: x
         self.avgpool = nn.AvgPool2d(8)
         self.fc = nn.Linear(width[-1], num_classes)

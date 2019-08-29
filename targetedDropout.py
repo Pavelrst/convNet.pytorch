@@ -5,7 +5,7 @@ import  numpy as np
 
 
 class _targetedDropout(Module):
-    def __init__(self, drop_rate, targeted_percentage, inplace=False):
+    def __init__(self, drop_rate, targeted_percentage, device='cpu' , inplace=False):
         super(_targetedDropout, self).__init__()
         if drop_rate < 0 or drop_rate > 1:
             raise ValueError("dropout probability has to be between 0 and 1, "
@@ -13,8 +13,9 @@ class _targetedDropout(Module):
         self.p = drop_rate
         self.targeted_percentage = targeted_percentage
         self.inplace = inplace
+        self.device = device
     def extra_repr(self):
-        return 'dropRate={} , targetedPercentage={} , inplace={}'.format(self.drop_rate,self.targeted_percentage,self.inplace)
+        return 'dropRate={} , targetedPercentage={} , inplace={}'.format(self.p,self.targeted_percentage,self.inplace)
 
 class targeted_weight_dropout(_targetedDropout):
     def forward(self,input, is_training):
@@ -41,7 +42,7 @@ class targeted_weight_dropout(_targetedDropout):
         threshoulds = sorted[0][int(idx)].repeat(input.shape[0], 1)
 
         # As a result all elements which are '0' - protected from being dropped out.
-        mask = torch.where(input > threshoulds, torch.zeros(input.shape), torch.ones(input.shape))
+        mask = torch.where(input > threshoulds, torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device))
 
 
         if not is_training:
@@ -111,15 +112,13 @@ class targeted_unit_dropout(_targetedDropout):
     '''
     def forward(self, input , is_training):
         Test = True
-
-
         initial_shape = input.shape
         input = input.view(initial_shape[0], -1)
         norm = input.norm(dim=1)
         idx = int(self.targeted_percentage * input.shape[0])
         sorted_norms = torch.sort(norm)[0]
         threshold = sorted_norms[idx]
-        mask = torch.where(norm > threshold, torch.zeros(norm.shape), torch.ones(norm.shape))
+        mask = torch.where(norm > threshold, torch.zeros(norm.shape).to(self.device), torch.ones(norm.shape).to(self.device))
         mask = torch.t(mask.repeat(input.shape[1] , 1))
 
         if not is_training:
@@ -133,7 +132,7 @@ class targeted_unit_dropout(_targetedDropout):
 
         tmp = 1 - self.p < torch.empty(input.shape).uniform_(0.1)
         mask_temp = torch.where((tmp.byte() & mask.byte()),
-                             torch.zeros(input.shape), torch.ones(input.shape))
+                             torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device))
         after_dropout = mask_temp * input
 
         if Test:
