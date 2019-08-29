@@ -3,27 +3,6 @@ from torch.nn.modules import Module
 from torch.nn import functional as F
 import  numpy as np
 
-# def targeted_weight_dropout(w, params, is_training):
-#   drop_rate = params.drop_rate
-#   targ_perc = params.targ_rate
-#
-#   w_shape = w.shape
-#   w = tf.reshape(w, [-1, w_shape[-1]])
-#   norm = tf.abs(w)
-#   idx = tf.to_int32(targ_perc * tf.to_float(tf.shape(w)[0]))
-#   threshold = tf.contrib.framework.sort(norm, axis=0)[idx]
-#   mask = norm < threshold[None, :]
-#
-#   if not is_training:
-#     w = (1. - tf.to_float(mask)) * w
-#     w = tf.reshape(w, w_shape)
-#     return w
-#
-#   mask = tf.to_float(tf.logical_and(tf.random_uniform(tf.shape(w)) < drop_rate, mask))
-#   w = (1. - mask) * w
-#   w = tf.reshape(w, w_shape)
-#   return w
-
 
 class _targetedDropout(Module):
     def __init__(self, drop_rate, targeted_percentage, inplace=False):
@@ -124,24 +103,84 @@ class targeted_weight_dropout(_targetedDropout):
 class targeted_unit_dropout(_targetedDropout):
     '''
     Unit - i.e. a column of a matrix.
-    The threshold is calculated by... 
+    The threshold is calculated by...
+
+    # weight: (out_channels , in_channels , kH , kW)
+    # New matrix shape will be:
+    # ( out_channels, in_channels * kH * kW )
     '''
-    def forward(self, input , isTraining):
+    def forward(self, input , is_training):
+        Test = True
+
+
         initial_shape = input.shape
         input = input.view(initial_shape[0], -1)
-        norm = input.norm(dim=0)
-        idx = int(self.targeted_percentage * input.shape[1])
+        norm = input.norm(dim=1)
+        idx = int(self.targeted_percentage * input.shape[0])
         sorted_norms = torch.sort(norm)[0]
         threshold = sorted_norms[idx]
         mask = torch.where(norm > threshold, torch.zeros(norm.shape), torch.ones(norm.shape))
-        mask = mask.repeat((input.shape[0] , 1))
+        mask = torch.t(mask.repeat(input.shape[1] , 1))
+
+        if not is_training:
+            # When not training we set to zero all weights
+            # which are less than threshold, as it would be
+            # if the model was pruned.
+            # TODO: This code is not tested.
+            out_w = (1 - mask) * input
+            out_w = out_w.view(initial_shape)
+            return out_w
+
         tmp = 1 - self.p < torch.empty(input.shape).uniform_(0.1)
         mask_temp = torch.where((tmp.byte() & mask.byte()),
                              torch.zeros(input.shape), torch.ones(input.shape))
-        final_mask = (1 - mask_temp)
-        after_dropout = final_mask * input
+        after_dropout = mask_temp * input
+
+        if Test:
+            self.self_test(input, after_dropout, threshold)
+
         final_weights = after_dropout.view(initial_shape)
         return final_weights
+
+    def self_test(self, w_in, w_out, thresh):
+        '''
+        targeted_unit_dropout self test
+        :param w_in: tensor of shape ( out_channels, in_channels * kH * kW )
+        :param w_out: tensor of shape ( out_channels, in_channels * kH * kW )
+        :return: Pass / Fail
+        '''
+        w_in = w_in.detach().numpy()
+        w_out = w_out.detach().numpy()
+        thresh = thresh.detach().numpy()
+
+        num_of_rows = w_in.shape[0]
+
+        idx = int(self.targeted_percentage * num_of_rows)
+
+        norm_list = []
+        for row in range(num_of_rows):
+            norm = np.linalg.norm(w_in[row, :])
+            norm_list.append(norm)
+
+        sorted_norm_list = sorted(norm_list)
+
+        threshold = sorted_norm_list[idx]
+
+        for row in range(num_of_rows):
+            norm = np.linalg.norm(w_in[row, :])
+            if norm <= threshold:
+                # drop
+                w_in[row, :] = np.zeros(w_in[row, :].shape)
+
+        #for row in range(num_of_rows):
+        #    print(np.linalg.norm(w_in[row, :]), '=?=', np.linalg.norm(w_out[row, :]))
+
+        if np.array_equal(thresh, threshold) and np.array_equal(w_in, w_out):
+            print("Test passed")
+        elif np.allclose(thresh, threshold) and np.allclose(w_in, w_out):
+            print("Test passed - with respect to tolerance")
+        else:
+            print("Test FAILED")
 
 class ramping_targeted_weight_dropout(_targetedDropout):
     '''
