@@ -1,1 +1,1 @@
-python main.py --dataset cifar10 --model resnet --device cpu --model-config "{'dropout' : 0.5 , 'dp_percentage' : 0.7 , 'dp_type' : 'unit' , 'device' : 'cuda'}"
+python main.py --dataset cifar10 --model resnet --device cuda --model-config "{'dropout' : 0.5 , 'dp_percentage' : 0.7 , 'dp_type' : 'unit' , 'device' : 'cuda'}"
