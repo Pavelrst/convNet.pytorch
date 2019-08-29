@@ -56,7 +56,7 @@ class targeted_weight_dropout(_targetedDropout):
 
         # mask_2 = matrix of {1/0} of (Uni < drop_rate)
         mask_2 = torch.where(torch.empty(input.shape).uniform_(0.1) > self.p,
-                             torch.zeros(input.shape), torch.ones(input.shape))
+                             torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device))
 
         # final_mask = mask_1 LOGIC_AND mask_2.
         final_mask = (1 - (mask.byte() & mask_2.byte())).double().float()
