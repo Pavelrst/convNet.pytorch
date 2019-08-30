@@ -25,6 +25,11 @@ class targeted_weight_dropout(_targetedDropout):
             torch.set_printoptions(precision=2)
             self.p = 1
 
+        if self.targeted_percentage == 0:
+            # Equal to not doing dropout.
+            # It's true for both train and test phase.
+            return input
+
         # Reshape - remove redundant dimensions.
         # weight: (out_channels , in_channels , kH , kW)
         # New matrix shape will be:
@@ -111,6 +116,12 @@ class targeted_unit_dropout(_targetedDropout):
     '''
     def forward(self, input , is_training):
         Test = False
+
+        if self.targeted_percentage == 0:
+            # Equal to not doing dropout.
+            # It's true for both train and test phase.
+            return input
+        
         initial_shape = input.shape
         input = input.view(initial_shape[0], -1)
         norm = input.norm(dim=1)
