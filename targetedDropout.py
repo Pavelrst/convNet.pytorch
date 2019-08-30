@@ -121,10 +121,10 @@ class targeted_unit_dropout(_targetedDropout):
             # Equal to not doing dropout.
             # It's true for both train and test phase.
             return input
-        
+
         initial_shape = input.shape
         input = input.view(initial_shape[0], -1)
-        norm = input.norm(dim=1)
+        norm = torch.abs(input).sum(dim=1)
         idx = int(self.targeted_percentage * (input.shape[0]-1))
         sorted_norms = torch.sort(norm)[0]
         threshold = sorted_norms[idx]
