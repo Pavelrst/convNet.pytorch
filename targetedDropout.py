@@ -112,9 +112,10 @@ class targeted_unit_dropout(_targetedDropout):
     def forward(self, input , is_training):
         Test = False
         initial_shape = input.shape
+        print(initial_shape)
         input = input.view(initial_shape[0], -1)
         norm = input.norm(dim=1)
-        idx = int(self.targeted_percentage * input.shape[0])
+        idx = int(self.targeted_percentage * (input.shape[0]-1))
         sorted_norms = torch.sort(norm)[0]
         threshold = sorted_norms[idx]
         mask = torch.where(norm.to(self.device) > threshold.to(self.device), torch.zeros(norm.shape).to(self.device), torch.ones(norm.shape).to(self.device))
