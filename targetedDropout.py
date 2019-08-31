@@ -131,15 +131,6 @@ class targeted_unit_dropout(_targetedDropout):
         mask = torch.where(norm.to(self.device) > threshold.to(self.device), torch.zeros(norm.shape).to(self.device), torch.ones(norm.shape).to(self.device))
         mask = torch.t(mask.repeat(input.shape[1] , 1)).to(self.device)
 
-        if not is_training:
-            # When not training we set to zero all weights
-            # which are less than threshold, as it would be
-            # if the model was pruned.
-            # TODO: This code is not tested.
-            out_w = (1 - mask) * input
-            out_w = out_w.view(initial_shape)
-            return out_w
-
         tmp = (1 - self.p < torch.empty(input.shape).uniform_(0, 1)).to(self.device)
         mask_temp = torch.where((tmp.byte() & mask.byte()),
                              torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device)).to(self.device)
