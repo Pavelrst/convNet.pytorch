@@ -1,0 +1,1 @@
+python main.py --dataset cifar10 --model resnet --device cpu --pruning-perc 0.5 --pruning-policy unit --pruning-modelpath 'C:\\Users\\Pavel\\Desktop\\2019-08-29_17-49-37\\model_best.pth.tar'
