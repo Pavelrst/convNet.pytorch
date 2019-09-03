@@ -70,6 +70,8 @@ class BasicBlock(nn.Module):
             self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=drop_percentage , device = dev)
         elif dropout_type == 'unit':
             self.dropout = targeted_unit_dropout(drop_rate=dropout  ,targeted_percentage= drop_percentage , device = dev)
+        else:
+            self.dropout = None
 
         self.conv1 = conv3x3(inplanes, planes, stride, groups=groups, dropout_fn=self.dropout)
         self.bn1 = nn.BatchNorm2d(planes)
