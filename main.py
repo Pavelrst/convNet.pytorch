@@ -21,9 +21,6 @@ from datetime import datetime
 from ast import literal_eval
 from trainer import Trainer
 
-#pruning
-from prune import validate_prune_args
-from prune import unit_prune
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -118,10 +115,6 @@ parser.add_argument('--tensorwatch', action='store_true', default=False,
 parser.add_argument('--tensorwatch-port', default=0, type=int,
                     help='set tensorwatch port')
 
-# Pruning arguments
-parser.add_argument('--pruning-perc', default=0.5, help='Percentage of pruning / sparcity')
-parser.add_argument('--pruning-policy', default=None, help='Pruning policy: None, unit, weight')
-parser.add_argument('--pruning-modelpath', default=None, help='Path to a model you wish to prune')
 
 def main():
     args = parser.parse_args()
@@ -253,19 +246,6 @@ def main_worker(args):
     if optim_state_dict is not None:
         optimizer.load_state_dict(optim_state_dict)
 
-    # Pruning
-    to_prune = validate_prune_args(args)
-    if to_prune:
-        checkpoint = torch.load(args.pruning_modelpath, map_location="cpu")
-
-        for key in checkpoint['state_dict']:
-            if 'conv' in key and key != 'conv1.weight':  # Except the first convolution layer with 3 channels.
-                print('Pruning ', key, ' of shape ', checkpoint['state_dict'][key].shape)
-                unit_prune(checkpoint['state_dict'], key, prune_percentage=0.5)
-
-        # load checkpoint
-        model.load_state_dict(checkpoint['state_dict'])
-        # Now the model is pruned
 
     trainer = Trainer(model, criterion, optimizer,
                       device_ids=args.device_ids, device=args.device, dtype=dtype,

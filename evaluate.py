@@ -21,12 +21,16 @@ from datetime import datetime
 from ast import literal_eval
 from trainer import Trainer
 
+#pruning
+from prune import validate_prune_args
+from prune import unit_prune
+
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ConvNet Evaluation')
-parser.add_argument('evaluate', type=str,
+parser.add_argument('--evaluate', type=str,
                     help='evaluate model FILE on validation set')
 parser.add_argument('--results-dir', metavar='RESULTS_DIR', default='./results',
                     help='results dir')
@@ -92,6 +96,10 @@ parser.add_argument('--absorb-bn', action='store_true', default=False,
 parser.add_argument('--seed', default=123, type=int,
                     help='random seed (default: 123)')
 
+# Pruning arguments
+parser.add_argument('--pruning-perc', default=0.5, help='Percentage of pruning / sparcity')
+parser.add_argument('--pruning-policy', default=None, help='Pruning policy: None, unit, weight')
+parser.add_argument('--pruning-modelpath', default=None, help='Path to a model you wish to prune')
 
 def main():
     args = parser.parse_args()
@@ -172,6 +180,20 @@ def main_worker(args):
     # Batch-norm should always be done in float
     if 'half' in args.dtype:
         FilterModules(model, module=is_bn).to(dtype=torch.float)
+
+    # Pruning
+    to_prune = validate_prune_args(args)
+    if to_prune:
+        checkpoint = torch.load(args.pruning_modelpath, map_location="cpu")
+
+        for key in checkpoint['state_dict']:
+            if 'conv' in key and key != 'conv1.weight':  # Except the first convolution layer with 3 channels.
+                print('Pruning ', key, ' of shape ', checkpoint['state_dict'][key].shape)
+                unit_prune(checkpoint['state_dict'], key, prune_percentage=0.5)
+
+            # load checkpoint
+            model.load_state_dict(checkpoint['state_dict'])
+            # Now the model is pruned
 
     trainer = Trainer(model, criterion,
                       device_ids=args.device_ids, device=args.device, dtype=dtype,

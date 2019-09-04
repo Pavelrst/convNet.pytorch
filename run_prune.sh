@@ -1,1 +1,1 @@
-python main.py --dataset cifar10 --model resnet --device cpu --pruning-perc 0.5 --pruning-policy unit --pruning-modelpath 'C:\\Users\\Pavel\\Desktop\\2019-08-29_17-49-37\\model_best.pth.tar'
+python evaluate.py --dataset cifar10 --model resnet --device cpu --pruning-perc 0.5 --pruning-policy unit --pruning-modelpath C:\Users\Pavel\Desktop\targeted_dropout_pytorch\results\2019-09-02_12-26-33
