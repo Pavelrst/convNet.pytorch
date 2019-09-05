@@ -20,7 +20,10 @@ from utils.param_filter import FilterModules, is_bn
 from datetime import datetime
 from ast import literal_eval
 from trainer import Trainer
-
+import seaborn as sns
+import matplotlib.pyplot as plt
+import os
+import datetime
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -262,10 +265,8 @@ def main_worker(args):
                                     'input_size': args.input_size, 'batch_size': args.eval_batch_size, 'shuffle': False,
                                     'num_workers': args.workers, 'pin_memory': True, 'drop_last': False})
 
-    if args.evaluate or to_prune:
+    if args.evaluate:
         results = trainer.validate(val_data.get_loader())
-        if to_prune:
-            print("Evaluation results of pruned model:")
         logging.info(results)
         return
 
@@ -304,6 +305,14 @@ def main_worker(args):
 
         # evaluate on validation set
         val_results = trainer.validate(val_data.get_loader())
+
+        # save weights heatmap
+        w = model._modules['layer3']._modules['5']._modules['conv2']._parameters['weight'].view(64, -1).detach().numpy()
+        path = 'C:\\Users\\Pavel\\Desktop\\targeted_dropout_pytorch\\pics\\experiment_0'
+        plot = sns.heatmap(w)
+        name = str(datetime.datetime.now()).replace(':', '_').replace('-', '_').replace('.', '_').replace(' ', '_') + '.png'
+        plot.get_figure().savefig(os.path.join(path, name))
+        plt.clf()
 
         if args.distributed and args.local_rank > 0:
             continue
