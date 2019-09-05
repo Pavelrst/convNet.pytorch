@@ -4,6 +4,7 @@ from torch.nn import functional as F
 import  numpy as np
 
 
+
 class _targetedDropout(Module):
     def __init__(self, drop_rate, targeted_percentage, device='cpu' , inplace=False):
         super(_targetedDropout, self).__init__()
@@ -48,7 +49,6 @@ class targeted_weight_dropout(_targetedDropout):
 
         # As a result all elements which are '0' - protected from being dropped out.
         mask = torch.where(input > threshoulds, torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device))
-
 
         if not is_training:
             # When not training we set to zero all weights
@@ -124,18 +124,19 @@ class targeted_unit_dropout(_targetedDropout):
 
         initial_shape = input.shape
         input = input.view(initial_shape[0], -1)
+
         norm = torch.abs(input).sum(dim=1)
         idx = int(self.targeted_percentage * (input.shape[0]-1))
         sorted_norms = torch.sort(norm)[0]
         threshold = sorted_norms[idx]
-        mask = torch.where(norm.to(self.device) > threshold.to(self.device), torch.zeros(norm.shape).to(self.device), torch.ones(norm.shape).to(self.device))
-        mask = torch.t(mask.repeat(input.shape[1] , 1)).to(self.device)
+        target_mask = torch.where(norm.to(self.device) > threshold.to(self.device), torch.zeros(norm.shape, device=self.device), torch.ones(norm.shape, device=self.device))
+        target_mask = torch.t(target_mask.repeat(input.shape[1] , 1)).to(self.device)
 
-        tmp = (1 - self.p < torch.empty(input.shape).uniform_(0, 1)).to(self.device)
-        mask_temp = torch.where((tmp.byte() & mask.byte()),
-                             torch.zeros(input.shape).to(self.device), torch.ones(input.shape).to(self.device)).to(self.device)
+        dp_mask = (1 - self.p < torch.empty((input.shape[0], 1)).uniform_(0, 1)).repeat(1, input.shape[1]).to(self.device)
+        total_mask = torch.where((dp_mask.byte() & target_mask.byte()),
+                             torch.zeros(input.shape, device=self.device), torch.ones(input.shape, device=self.device)).to(self.device)
 
-        after_dropout = mask_temp * input.to(self.device)
+        after_dropout = total_mask * input.to(self.device)
 
         if Test:
             self.self_test(input, after_dropout, threshold)
