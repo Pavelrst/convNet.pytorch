@@ -10,7 +10,8 @@ import torch.optim
 import torch.utils.data
 import models
 import torch.distributed as dist
-from os import path, makedirs
+from os import makedirs
+from os import path as path
 from data import DataRegime, SampledDataRegime
 from utils.log import setup_logging, ResultsLog, save_checkpoint, export_args_namespace
 from utils.optim import OptimRegime
@@ -22,8 +23,7 @@ from ast import literal_eval
 from trainer import Trainer
 import seaborn as sns
 import matplotlib.pyplot as plt
-import os
-import datetime
+
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -308,10 +308,10 @@ def main_worker(args):
 
         # save weights heatmap
         w = model._modules['layer3']._modules['5']._modules['conv2']._parameters['weight'].view(64, -1).detach().numpy()
-        path = 'C:\\Users\\Pavel\\Desktop\\targeted_dropout_pytorch\\pics\\experiment_0'
+        heat_maps_dir = 'C:\\Users\\Pavel\\Desktop\\targeted_dropout_pytorch\\pics\\experiment_0'
         plot = sns.heatmap(w)
-        name = str(datetime.datetime.now()).replace(':', '_').replace('-', '_').replace('.', '_').replace(' ', '_') + '.png'
-        plot.get_figure().savefig(os.path.join(path, name))
+        name = str(datetime.now()).replace(':', '_').replace('-', '_').replace('.', '_').replace(' ', '_') + '.png'
+        plot.get_figure().savefig(path.join(heat_maps_dir, name))
         plt.clf()
 
         if args.distributed and args.local_rank > 0:
