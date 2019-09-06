@@ -30,7 +30,7 @@ model_names = sorted(name for name in models.__dict__
                      and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ConvNet Evaluation')
-parser.add_argument('--evaluate', type=str,
+parser.add_argument('--eval_path', type=str,
                     help='evaluate model FILE on validation set')
 parser.add_argument('--results-dir', metavar='RESULTS_DIR', default='./results',
                     help='results dir')
@@ -99,7 +99,6 @@ parser.add_argument('--seed', default=123, type=int,
 # Pruning arguments
 parser.add_argument('--pruning-perc', default=0.5, help='Percentage of pruning / sparcity')
 parser.add_argument('--pruning-policy', default=None, help='Pruning policy: None, unit, weight')
-parser.add_argument('--pruning-modelpath', default=None, help='Path to a model you wish to prune')
 
 def main():
     args = parser.parse_args()
@@ -112,7 +111,7 @@ def main_worker(args):
     dtype = torch_dtypes.get(args.dtype)
     torch.manual_seed(args.seed)
     time_stamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    if args.evaluate:
+    if args.eval_path:
         args.results_dir = '/tmp'
     if args.save is '':
         args.save = time_stamp
@@ -138,9 +137,9 @@ def main_worker(args):
     else:
         args.device_ids = None
 
-    if not os.path.isfile(args.evaluate):
-        parser.error('invalid checkpoint: {}'.format(args.evaluate))
-    checkpoint = torch.load(args.evaluate, map_location="cpu")
+    if not os.path.isfile(args.eval_path):
+        parser.error('invalid checkpoint: {}'.format(args.eval_path))
+    checkpoint = torch.load(args.eval_path, map_location="cpu")
     # Overrride configuration with checkpoint info
     args.model = checkpoint.get('model', args.model)
     args.model_config = checkpoint.get('config', args.model_config)
@@ -164,7 +163,7 @@ def main_worker(args):
     # load checkpoint
     model.load_state_dict(checkpoint['state_dict'])
     logging.info("loaded checkpoint '%s' (epoch %s)",
-                 args.evaluate, checkpoint['epoch'])
+                 args.eval_path, checkpoint['epoch'])
 
     if args.absorb_bn:
         search_absorb_bn(model, remove_bn=not args.calibrate_bn, verbose=True)
@@ -184,7 +183,7 @@ def main_worker(args):
     # Pruning
     to_prune = validate_prune_args(args)
     if to_prune:
-        checkpoint = torch.load(args.pruning_modelpath, map_location="cpu")
+        checkpoint = torch.load(args.eval_path, map_location="cpu")
 
         for key in checkpoint['state_dict']:
             if 'conv' in key and key != 'conv1.weight':  # Except the first convolution layer with 3 channels.
