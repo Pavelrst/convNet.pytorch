@@ -97,7 +97,7 @@ parser.add_argument('--seed', default=123, type=int,
                     help='random seed (default: 123)')
 
 # Pruning arguments
-parser.add_argument('--pruning-perc', default=0.5, help='Percentage of pruning / sparcity')
+parser.add_argument('--pruning-perc', default=None, help='Percentage of pruning / sparcity')
 parser.add_argument('--pruning-policy', default=None, help='Pruning policy: None, unit, weight')
 
 def main():
@@ -182,34 +182,50 @@ def main_worker(args):
 
     # Pruning
     to_prune = validate_prune_args(args)
-    if to_prune:
-        checkpoint = torch.load(args.eval_path, map_location="cpu")
+    if to_prune == 'single_run':
+        eval_checkpoint(args, model, criterion, prune_perc=args.pruning_perc)
+    elif to_prune == 'multiple_run':
+        percs = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+        results = []
+        for perc in percs:
+            results.append(eval_checkpoint(args, model, criterion, prune_perc=perc)['prec1'])
 
+        for perc, res in zip(percs, results):
+            print("prune%:", perc, " acc:", res)
+
+def eval_checkpoint(args, model, criterion, prune_perc=0):
+    checkpoint = torch.load(args.eval_path, map_location="cpu")
+    if prune_perc > 0:
         for key in checkpoint['state_dict']:
             if 'conv' in key and key != 'conv1.weight':  # Except the first convolution layer with 3 channels.
-                print('Pruning ', key, ' of shape ', checkpoint['state_dict'][key].shape)
-                unit_prune(checkpoint['state_dict'], key, prune_percentage=0.5)
-
-            # load checkpoint
-            model.load_state_dict(checkpoint['state_dict'])
-            # Now the model is pruned
+                unit_prune(checkpoint['state_dict'], key, prune_percentage=prune_perc)
+    model.load_state_dict(checkpoint['state_dict'])
+    # Now the model is pruned
 
     trainer = Trainer(model, criterion,
                       device_ids=args.device_ids, device=args.device, dtype=dtype,
                       mixup=args.mixup, print_freq=args.print_freq)
 
     # Evaluation Data loading code
-    val_data = DataRegime(None, defaults={'datasets_path': args.datasets_dir, 'name': args.dataset, 'split': 'val', 'augment': args.augment,
-                                          'input_size': args.input_size, 'batch_size': args.batch_size, 'shuffle': False, 'duplicates': args.duplicates, 'autoaugment': args.autoaugment,
-                                          'cutout': {'holes': 1, 'length': 16} if args.cutout else None, 'num_workers': args.workers, 'pin_memory': True, 'drop_last': False})
+    val_data = DataRegime(None, defaults={'datasets_path': args.datasets_dir, 'name': args.dataset, 'split': 'val',
+                                          'augment': args.augment,
+                                          'input_size': args.input_size, 'batch_size': args.batch_size,
+                                          'shuffle': False, 'duplicates': args.duplicates,
+                                          'autoaugment': args.autoaugment,
+                                          'cutout': {'holes': 1, 'length': 16} if args.cutout else None,
+                                          'num_workers': args.workers, 'pin_memory': True, 'drop_last': False})
 
     if args.calibrate_bn:
-        train_data = DataRegime(None, defaults={'datasets_path': args.datasets_dir, 'name': args.dataset, 'split': 'train', 'augment': True,
-                                                'input_size': args.input_size, 'batch_size': args.batch_size, 'shuffle': True, 'num_workers': args.workers, 'pin_memory': True, 'drop_last': False})
+        train_data = DataRegime(None,
+                                defaults={'datasets_path': args.datasets_dir, 'name': args.dataset, 'split': 'train',
+                                          'augment': True,
+                                          'input_size': args.input_size, 'batch_size': args.batch_size, 'shuffle': True,
+                                          'num_workers': args.workers, 'pin_memory': True, 'drop_last': False})
         trainer.calibrate_bn(train_data.get_loader(), num_steps=200)
     results = trainer.validate(val_data.get_loader(),
                                average_output=args.avg_out)
     logging.info(results)
+    print("Model pruning percentage = ", prune_perc)
     print(results)
     return results
 

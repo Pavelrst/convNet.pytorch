@@ -254,16 +254,7 @@ class ResNet_imagenet(ResNet):
                 {'epoch': 60, 'lr': scale_lr * 1e-3},
                 {'epoch': 80, 'lr': scale_lr * 1e-4}
             ]
-        elif regime == 'fast':
-            self.regime = [
-                {'epoch': 0, 'optimizer': 'SGD', 'momentum': 0.9, 'regularizer': weight_decay_config(1e-4),
-                 'step_lambda': ramp_up_lr(0.1, 0.1 * 4 * scale_lr, 5004 * 4 / (4 * scale_lr))},
-                {'epoch': 4,  'lr': 4 * scale_lr * 1e-1},
-                {'epoch': 18, 'lr': scale_lr * 1e-1},
-                {'epoch': 21, 'lr': scale_lr * 1e-2},
-                {'epoch': 35, 'lr': scale_lr * 1e-3},
-                {'epoch': 43, 'lr': scale_lr * 1e-4},
-            ]
+
             self.data_regime = [
                 {'epoch': 0, 'input_size': 128, 'batch_size': 256},
                 {'epoch': 18, 'input_size': 224, 'batch_size': 64},
@@ -294,7 +285,7 @@ class ResNet_imagenet(ResNet):
 class ResNet_cifar(ResNet):
 
     def __init__(self, num_classes=10, inplanes=16,
-                 block=BasicBlock, depth=18, width=[16, 32, 64],
+                 block=BasicBlock, depth=32, width=[16, 32, 64],
                  groups=[1, 1, 1], residual_block=None, regime='normal', dropout=None, mixup=False , dp_type = None , dp_percentage = None,
                  device='cpu'):
         super(ResNet_cifar, self).__init__()

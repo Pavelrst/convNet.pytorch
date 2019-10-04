@@ -67,7 +67,7 @@ parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
 parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
                     help='number of data loading workers (default: 8)')
-parser.add_argument('--epochs', default=90, type=int, metavar='N',
+parser.add_argument('--epochs', default=200, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=-1, type=int, metavar='N',
                     help='manual epoch number (useful on restarts). -1 for unset (will start at 0)')
@@ -306,13 +306,13 @@ def main_worker(args):
         # evaluate on validation set
         val_results = trainer.validate(val_data.get_loader())
 
-        # save weights heatmap
-        w = model._modules['layer3']._modules['5']._modules['conv2']._parameters['weight'].view(64, -1).detach().numpy()
-        heat_maps_dir = 'C:\\Users\\Pavel\\Desktop\\targeted_dropout_pytorch\\pics\\experiment_0'
-        plot = sns.heatmap(w)
-        name = str(datetime.now()).replace(':', '_').replace('-', '_').replace('.', '_').replace(' ', '_') + '.png'
-        plot.get_figure().savefig(path.join(heat_maps_dir, name))
-        plt.clf()
+        # # save weights heatmap
+        # w = model._modules['layer3']._modules['5']._modules['conv2']._parameters['weight'].view(64, -1).cpu().detach().numpy()
+        # heat_maps_dir = 'C:\\Users\\Pavel\\Desktop\\targeted_dropout_pytorch\\pics\\experiment_0'
+        # plot = sns.heatmap(w, center=0)
+        # name = str(datetime.now()).replace(':', '_').replace('-', '_').replace('.', '_').replace(' ', '_') + '.png'
+        # plot.get_figure().savefig(path.join(heat_maps_dir, name))
+        # plt.clf()
 
         if args.distributed and args.local_rank > 0:
             continue

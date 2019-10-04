@@ -1,1 +1,1 @@
-python evaluate.py --dataset cifar10 --model resnet --device cpu --pruning-perc 0.5 --pruning-policy unit --pruning-modelpath C:\Users\Pavel\Desktop\targeted_dropout_pytorch\results\2019-09-02_12-26-33
+python evaluate.py --dataset cifar10 --model resnet --device cuda --pruning-perc 0.5 --pruning-policy unit --eval_path C:\Users\Pavel\Desktop\targeted_dropout_pytorch\results\2019-09-07_07-51-58

@@ -1,17 +1,24 @@
 import torch
+import seaborn as sns
+from datetime import datetime
+from os import path
+import matplotlib.pyplot as plt
 
 def validate_prune_args(args):
-    if (args.pruning_policy is not None) and (args.pruning_modelpath is not None):
+    if (args.pruning_policy is not None) and (args.eval_path is not None) and (args.pruning_perc is not None):
         print('The model will be pruned with pruning percentage: ', args.pruning_perc)
-        return True
-    elif (args.pruning_policy is not None) and (args.pruning_modelpath is None):
-        print('If you want to prune and evaluate a model, define a path to the model using --pruning-modelpath <some path>')
-        return False
-    elif (args.pruning_policy is None) and (args.pruning_modelpath is not None):
+        return 'single_run'
+    elif (args.pruning_policy is not None) and (args.eval_path is None) and (args.pruning_perc is not None):
+        print('If you want to prune and evaluate a model, define a path to the model using --eval-path <some path>')
+        return 'wrong_args'
+    elif (args.pruning_policy is None) and (args.eval_path is not None) and (args.pruning_perc is not None):
         print('If you want to prune and evaluate a model, set pruning policy using --pruning-policy <unit/weigh>')
-        return False
+        return 'wrong_args'
+    elif (args.pruning_policy is not None) and (args.eval_path is not None) and (args.pruning_perc is None):
+        print('The model will be pruned for following percentages: 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9')
+        return 'multiple_run'
     else:
-        return False
+        return 'wrong_args'
 
 def unit_prune(state_dict, key, prune_percentage=0):
     weights = state_dict[key]
@@ -20,7 +27,17 @@ def unit_prune(state_dict, key, prune_percentage=0):
         return weights
 
     initial_shape = weights.shape
+    # if initial_shape[0] == 64:
+    #     print('!')
+
     input = weights.view(initial_shape[0], -1)
+
+    heat_maps_dir = 'C:\\Users\\Pavel\\Desktop\\targeted_dropout_pytorch\\pics\\experiment_2'
+    plot = sns.heatmap(input, center=0)
+    name = str(datetime.now()).replace(':', '_').replace('-', '_').replace('.', '_').replace(' ', '_') + 'before.png'
+    plot.get_figure().savefig(path.join(heat_maps_dir, name))
+    plt.clf()
+
     norm = torch.abs(input).sum(dim=1)
     idx = int(prune_percentage * (input.shape[0] - 1))
     sorted_norms = torch.sort(norm)[0]
@@ -29,6 +46,12 @@ def unit_prune(state_dict, key, prune_percentage=0):
     mask = torch.t(mask.repeat(input.shape[1], 1))
 
     out_w = (1 - mask) * input
+
+    plot = sns.heatmap(out_w, center=0)
+    name = str(datetime.now()).replace(':', '_').replace('-', '_').replace('.', '_').replace(' ', '_') + 'after.png'
+    plot.get_figure().savefig(path.join(heat_maps_dir, name))
+    plt.clf()
+
     out_w = out_w.view(initial_shape)
 
     state_dict[key] = out_w
