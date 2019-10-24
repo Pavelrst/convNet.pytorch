@@ -23,7 +23,7 @@ from ast import literal_eval
 from trainer import Trainer
 import seaborn as sns
 import matplotlib.pyplot as plt
-
+from models.resnet import resnet
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
@@ -155,14 +155,14 @@ def main_worker(args):
         else:
             args.device_ids = [args.local_rank]
 
-    if not (args.distributed and args.local_rank > 0):
-        if not path.exists(save_path):
-            makedirs(save_path)
-        export_args_namespace(args, path.join(save_path, 'config.json'))
+    # if not (args.distributed and args.local_rank > 0):
+    if not path.exists(save_path):
+        makedirs(save_path)
+    export_args_namespace(args, path.join(save_path, 'config.json'))
 
     setup_logging(path.join(save_path, 'log.txt'),
                   resume=args.resume is not '',
-                  dummy=args.distributed and args.local_rank > 0)
+                  dummy=False)
 
     results_path = path.join(save_path, 'results')
     results = ResultsLog(results_path,
@@ -179,13 +179,14 @@ def main_worker(args):
     else:
         args.device_ids = None
 
-    # create model
-    model = models.__dict__[args.model]
-    model_config = {'dataset': args.dataset}
 
+
+    model_config = {'dataset': args.dataset}
     if args.model_config is not '':
         model_config = dict(model_config, **literal_eval(args.model_config))
-    model = model(**model_config)
+
+    # create Resnet model
+    model = resnet(**model_config)
     logging.info("created model with configuration: %s", model_config)
     num_parameters = sum([l.nelement() for l in model.parameters()])
     logging.info("number of parameters: %d", num_parameters)
