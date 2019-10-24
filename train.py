@@ -29,106 +29,100 @@ model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
 
-parser = argparse.ArgumentParser(description='PyTorch ConvNet Training')
-parser.add_argument('--config-file', default=None,
-                    help='json configuration file')
-parser.add_argument('--results-dir', metavar='RESULTS_DIR', default='./results',
-                    help='results dir')
-parser.add_argument('--save', metavar='SAVE', default='',
-                    help='saved folder')
-parser.add_argument('--datasets-dir', metavar='DATASETS_DIR', default='~/Datasets',
-                    help='datasets dir')
-parser.add_argument('--dataset', metavar='DATASET', default='imagenet',
-                    help='dataset name or folder')
-parser.add_argument('--model', '-a', metavar='MODEL', default='alexnet',
-                    choices=model_names,
-                    help='model architecture: ' +
-                    ' | '.join(model_names) +
-                    ' (default: alexnet)')
-parser.add_argument('--input-size', type=int, default=None,
-                    help='image input size')
-parser.add_argument('--model-config', default='',
-                    help='additional architecture configuration')
-parser.add_argument('--dtype', default='float',
-                    help='type of tensor: ' +
-                    ' | '.join(torch_dtypes.keys()) +
-                    ' (default: float)')
-parser.add_argument('--device', default='cuda',
-                    help='device assignment ("cpu" or "cuda")')
-parser.add_argument('--device-ids', default=[0], type=int, nargs='+',
-                    help='device ids assignment (e.g 0 1 2 3')
-parser.add_argument('--world-size', default=-1, type=int,
-                    help='number of distributed processes')
-parser.add_argument('--local_rank', default=-1, type=int,
-                    help='rank of distributed processes')
-parser.add_argument('--dist-init', default='env://', type=str,
-                    help='init used to set up distributed training')
-parser.add_argument('--dist-backend', default='nccl', type=str,
-                    help='distributed backend')
-parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
-                    help='number of data loading workers (default: 8)')
-parser.add_argument('--epochs', default=200, type=int, metavar='N',
-                    help='number of total epochs to run')
-parser.add_argument('--start-epoch', default=-1, type=int, metavar='N',
-                    help='manual epoch number (useful on restarts). -1 for unset (will start at 0)')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
-                    metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--eval-batch-size', default=-1, type=int,
-                    help='mini-batch size (default: same as training)')
-parser.add_argument('--optimizer', default='SGD', type=str, metavar='OPT',
-                    help='optimizer function used')
-parser.add_argument('--drop-optim-state', action='store_true', default=False,
-                    help='do not save optimizer state for resume')
-parser.add_argument('--save-all', action='store_true', default=False,
-                    help='save checkpoint for every epoch')
-parser.add_argument('--label-smoothing', default=0, type=float,
-                    help='label smoothing coefficient - default 0')
-parser.add_argument('--mixup', default=None, type=float,
-                    help='mixup alpha coefficient - default None')
-parser.add_argument('--duplicates', default=1, type=int,
-                    help='number of augmentations over singel example')
-parser.add_argument('--chunk-batch', default=1, type=int,
-                    help='chunk batch size for multiple passes (training)')
-parser.add_argument('--cutout', action='store_true', default=False,
-                    help='cutout augmentations')
-parser.add_argument('--autoaugment', action='store_true', default=False,
-                    help='use autoaugment policies')
-parser.add_argument('--grad-clip', default=-1, type=float,
-                    help='maximum grad norm value, -1 for none')
-parser.add_argument('--loss-scale', default=1, type=float,
-                    help='loss scale for mixed precision training.')
-parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
-                    metavar='LR', help='initial learning rate')
-parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
-                    help='momentum')
-parser.add_argument('--weight-decay', '--wd', default=0, type=float,
-                    metavar='W', help='weight decay (default: 0)')
-parser.add_argument('--print-freq', '-p', default=10, type=int,
-                    metavar='N', help='print frequency (default: 10)')
-parser.add_argument('--adapt-grad-norm', default=None, type=int,
-                    help='adapt gradient scale frequency (default: None)')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
-                    help='path to latest checkpoint (default: none)')
-parser.add_argument('-e', '--evaluate', type=str, metavar='FILE',
-                    help='evaluate model FILE on validation set')
-parser.add_argument('--seed', default=123, type=int,
-                    help='random seed (default: 123)')
-parser.add_argument('--tensorwatch', action='store_true', default=False,
-                    help='set tensorwatch logging')
-parser.add_argument('--tensorwatch-port', default=0, type=int,
-                    help='set tensorwatch port')
+# parser = argparse.ArgumentParser(description='PyTorch ConvNet Training')
+# parser.add_argument('--config-file', default=None,
+#                     help='json configuration file')
+# parser.add_argument('--results-dir', metavar='RESULTS_DIR', default='./results',
+#                     help='results dir')
+# parser.add_argument('--save', metavar='SAVE', default='',
+#                     help='saved folder')
+# parser.add_argument('--datasets-dir', metavar='DATASETS_DIR', default='~/Datasets',
+#                     help='datasets dir')
+# parser.add_argument('--dataset', metavar='DATASET', default='imagenet',
+#                     help='dataset name or folder')
+# parser.add_argument('--model', '-a', metavar='MODEL', default='alexnet',
+#                     choices=model_names,
+#                     help='model architecture: ' +
+#                     ' | '.join(model_names) +
+#                     ' (default: alexnet)')
+# parser.add_argument('--input-size', type=int, default=None,
+#                     help='image input size')
+# parser.add_argument('--model-config', default='',
+#                     help='additional architecture configuration')
+# parser.add_argument('--dtype', default='float',
+#                     help='type of tensor: ' +
+#                     ' | '.join(torch_dtypes.keys()) +
+#                     ' (default: float)')
+# parser.add_argument('--device', default='cuda',
+#                     help='device assignment ("cpu" or "cuda")')
+# parser.add_argument('--device-ids', default=[0], type=int, nargs='+',
+#                     help='device ids assignment (e.g 0 1 2 3')
+# parser.add_argument('--world-size', default=-1, type=int,
+#                     help='number of distributed processes')
+# parser.add_argument('--local_rank', default=-1, type=int,
+#                     help='rank of distributed processes')
+# parser.add_argument('--dist-init', default='env://', type=str,
+#                     help='init used to set up distributed training')
+# parser.add_argument('--dist-backend', default='nccl', type=str,
+#                     help='distributed backend')
+# parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
+#                     help='number of data loading workers (default: 8)')
+# parser.add_argument('--epochs', default=200, type=int, metavar='N',
+#                     help='number of total epochs to run')
+# parser.add_argument('--start-epoch', default=-1, type=int, metavar='N',
+#                     help='manual epoch number (useful on restarts). -1 for unset (will start at 0)')
+# parser.add_argument('-b', '--batch-size', default=256, type=int,
+#                     metavar='N', help='mini-batch size (default: 256)')
+# parser.add_argument('--eval-batch-size', default=-1, type=int,
+#                     help='mini-batch size (default: same as training)')
+# parser.add_argument('--optimizer', default='SGD', type=str, metavar='OPT',
+#                     help='optimizer function used')
+# parser.add_argument('--drop-optim-state', action='store_true', default=False,
+#                     help='do not save optimizer state for resume')
+# parser.add_argument('--save-all', action='store_true', default=False,
+#                     help='save checkpoint for every epoch')
+# parser.add_argument('--label-smoothing', default=0, type=float,
+#                     help='label smoothing coefficient - default 0')
+# parser.add_argument('--mixup', default=None, type=float,
+#                     help='mixup alpha coefficient - default None')
+# parser.add_argument('--duplicates', default=1, type=int,
+#                     help='number of augmentations over singel example')
+# parser.add_argument('--chunk-batch', default=1, type=int,
+#                     help='chunk batch size for multiple passes (training)')
+# parser.add_argument('--cutout', action='store_true', default=False,
+#                     help='cutout augmentations')
+# parser.add_argument('--autoaugment', action='store_true', default=False,
+#                     help='use autoaugment policies')
+# parser.add_argument('--grad-clip', default=-1, type=float,
+#                     help='maximum grad norm value, -1 for none')
+# parser.add_argument('--loss-scale', default=1, type=float,
+#                     help='loss scale for mixed precision training.')
+# parser.add_argument('--lr', '--learning-rate', default=0.1, type=float,
+#                     metavar='LR', help='initial learning rate')
+# parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
+#                     help='momentum')
+# parser.add_argument('--weight-decay', '--wd', default=0, type=float,
+#                     metavar='W', help='weight decay (default: 0)')
+# parser.add_argument('--print-freq', '-p', default=10, type=int,
+#                     metavar='N', help='print frequency (default: 10)')
+# parser.add_argument('--adapt-grad-norm', default=None, type=int,
+#                     help='adapt gradient scale frequency (default: None)')
+# parser.add_argument('--resume', default='', type=str, metavar='PATH',
+#                     help='path to latest checkpoint (default: none)')
+# parser.add_argument('-e', '--evaluate', type=str, metavar='FILE',
+#                     help='evaluate model FILE on validation set')
+# parser.add_argument('--seed', default=123, type=int,
+#                     help='random seed (default: 123)')
+# parser.add_argument('--tensorwatch', action='store_true', default=False,
+#                     help='set tensorwatch logging')
+# parser.add_argument('--tensorwatch-port', default=0, type=int,
+#                     help='set tensorwatch port')
 
+from args import train_args
 
 def main():
-    args = parser.parse_args()
-    if args.config_file is not None:
-        with open(args.config_file) as f:
-            config_dict = json.loads(f.read())
-        parser.set_defaults(**config_dict)
-        args = parser.parse_args()
-
+    args = train_args()
     main_worker(args)
-
 
 def main_worker(args):
     global best_prec1, dtype
