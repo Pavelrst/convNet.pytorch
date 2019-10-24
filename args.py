@@ -4,6 +4,7 @@ class default_args():
     Default args we don't use
     '''
     def __init__(self):
+        self.config_file = None # 'json configuration file'
         self.device_ids = [0]
         self.world_size = -1
         self.local_rank = -1
@@ -26,7 +27,15 @@ class default_args():
         self.save = ''
         self.input_size = None
         self.dtype = 'float'
-
+        self.optimizer = 'SGD'
+        self.lr = 0.1
+        self.momentum = 0.9
+        self.weight_decay = 0
+        self.loss_scale = 1
+        self.grad_clip = -1
+        self.adapt_grad_norm = None
+        self.tensorwatch = False
+        self.start_epoch = -1
 
 class default_td_args(default_args):
     '''
@@ -43,13 +52,17 @@ class default_td_args(default_args):
 
 class train_args(default_td_args):
     '''
-    pruning args
+    training args
     '''
     def __init__(self):
         super().__init__()
+        self.epochs = 200
         self.batch_size = 256
+        self.eval_batch_size = self.batch_size
         self.pruning_perc = None
         self.pruning_policy = 'unit'
+        self.evaluate = False
+
 
 class eval_prune_args(default_td_args):
     '''
