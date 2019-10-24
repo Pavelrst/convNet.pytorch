@@ -312,10 +312,18 @@ class ResNet_cifar(ResNet):
             self.regime = [
                 {'epoch': 0, 'optimizer': 'SGD', 'lr': 1e-1, 'momentum': 0.9,
                  'regularizer': weight_decay_config(1e-4)},
-                {'epoch': 81, 'lr': 1e-2},
-                {'epoch': 122, 'lr': 1e-3},
-                {'epoch': 164, 'lr': 1e-4}
+                {'epoch': 10, 'lr': 1e-2},
+                {'epoch': 20, 'lr': 1e-3},
+                {'epoch': 30, 'lr': 1e-4}
             ]
+        # if regime == 'normal':
+        #     self.regime = [
+        #         {'epoch': 0, 'optimizer': 'SGD', 'lr': 1e-1, 'momentum': 0.9,
+        #          'regularizer': weight_decay_config(1e-4)},
+        #         {'epoch': 81, 'lr': 1e-2},
+        #         {'epoch': 122, 'lr': 1e-3},
+        #         {'epoch': 164, 'lr': 1e-4}
+        #     ]
         elif regime == 'wide-resnet':
             self.regime = [
                 {'epoch': 0, 'optimizer': 'SGD', 'lr': 1e-1, 'momentum': 0.9,
