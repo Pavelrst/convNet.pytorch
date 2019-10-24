@@ -27,7 +27,7 @@ from prune import unit_prune
 from copy import deepcopy
 
 # statistics collecting
-from statistics_collector import register_collectors, dump_buffers
+from statistics_collector import dump_buffers, register_hist_collectors, register_stats_collectors
 
 
 model_names = sorted(name for name in models.__dict__
@@ -142,39 +142,32 @@ def main_worker(args):
     else:
         args.device_ids = None
 
-    # checkpoint = torch.load(args.eval_path, map_location="cpu")
-    # # Overrride configuration with checkpoint info
-    # args.model = checkpoint.get('model', args.model)
-    # args.model_config = checkpoint.get('config', args.model_config)
-
-    # logging.info("saving to %s", save_path)
-    # logging.debug("run arguments: %s", args)
-    # logging.info("creating model %s", args.model)
-
-    # Register hooks
-
-
     # Pruning and evaluating
     if len(args.pruning_percs) > 0:
         results = []
         checkpoint = torch.load(args.eval_path, map_location="cpu")
         for perc in args.pruning_percs:
             model, criterion = create_model_and_criterion(args)
-            model = register_collectors(model)
-            res = eval_checkpoint(args, model, checkpoint['state_dict'], criterion, prune_perc=perc)['prec1']
-            dump_buffers(model)
+            model = register_stats_collectors(model)
+            model = prune_model(model, checkpoint['state_dict'], prune_perc=perc)
+            res = eval_checkpoint(args, model, criterion)['prec1']
             results.append(res)
+
+            # After we gathered min/max statistics we can gather also histograms.
+            if args.gather_histograms == True:
+                model = register_hist_collectors(model)
+                _ = eval_checkpoint(args, model, criterion)['prec1']
+
+            dump_buffers(model)
 
         for perc, res in zip(args.pruning_percs, results):
             print("prune%:", perc, " acc:", res)
 
-
-def eval_checkpoint(args, model, ckpt_state_dict, criterion, prune_perc=0):
+def prune_model(model, ckpt_state_dict, prune_perc=0):
     '''
-    Loading a chekpoint, pruning the weights, and evaluating the model.
+    This function prunes the weights of the model.
     '''
     state_dict = deepcopy(ckpt_state_dict)
-
     # Prune the model
     if prune_perc > 0:
         for key in state_dict:
@@ -182,8 +175,12 @@ def eval_checkpoint(args, model, ckpt_state_dict, criterion, prune_perc=0):
                 unit_prune(state_dict, key, prune_percentage=prune_perc)
     model.load_state_dict(state_dict)
     # Now the model is pruned
+    return model
 
-
+def eval_checkpoint(args, model, criterion):
+    '''
+    Loading a chekpoint, pruning the weights, and evaluating the model.
+    '''
     trainer = Trainer(model, criterion=criterion,
                       device_ids=args.device_ids, device=args.device, dtype=dtype,
                       mixup=args.mixup, print_freq=args.print_freq)
@@ -200,8 +197,6 @@ def eval_checkpoint(args, model, ckpt_state_dict, criterion, prune_perc=0):
     results = trainer.validate(val_data.get_loader(),
                                average_output=args.avg_out)
     logging.info(results)
-    print("Model pruning percentage = ", prune_perc)
-    print(results)
     return results
 
 
