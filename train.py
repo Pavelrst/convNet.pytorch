@@ -13,7 +13,7 @@ import torch.distributed as dist
 from os import makedirs
 from os import path as path
 from data import DataRegime, SampledDataRegime
-from utils.log import setup_logging, ResultsLog, save_checkpoint, export_args_namespace
+from utils.log import setup_logging, ResultsLog, save_checkpoint, dump_args
 from utils.optim import OptimRegime
 from utils.cross_entropy import CrossEntropyLoss
 from utils.misc import torch_dtypes
@@ -152,7 +152,7 @@ def main_worker(args):
     # if not (args.distributed and args.local_rank > 0):
     if not path.exists(save_path):
         makedirs(save_path)
-    export_args_namespace(args, path.join(save_path, 'config.json'))
+    dump_args(args, path.join(save_path, 'args.txt'))
 
     setup_logging(path.join(save_path, 'log.txt'),
                   resume=args.resume is not '',
@@ -185,39 +185,39 @@ def main_worker(args):
     num_parameters = sum([l.nelement() for l in model.parameters()])
     logging.info("number of parameters: %d", num_parameters)
 
-    # optionally resume from a checkpoint
-    if args.evaluate:
-        if not path.isfile(args.evaluate):
-            parser.error('invalid checkpoint: {}'.format(args.evaluate))
-        checkpoint = torch.load(args.evaluate, map_location="cpu")
-        # Overrride configuration with checkpoint info
-        args.model = checkpoint.get('model', args.model)
-        args.model_config = checkpoint.get('config', args.model_config)
-        # load checkpoint
-        model.load_state_dict(checkpoint['state_dict'])
-        logging.info("loaded checkpoint '%s' (epoch %s)",
-                     args.evaluate, checkpoint['epoch'])
-
-    if args.resume:
-        checkpoint_file = args.resume
-        if path.isdir(checkpoint_file):
-            results.load(path.join(checkpoint_file, 'results.csv'))
-            checkpoint_file = path.join(
-                checkpoint_file, 'model_best.pth.tar')
-        if path.isfile(checkpoint_file):
-            logging.info("loading checkpoint '%s'", args.resume)
-            checkpoint = torch.load(checkpoint_file, map_location="cpu")
-            if args.start_epoch < 0:  # not explicitly set
-                args.start_epoch = checkpoint['epoch']
-            best_prec1 = checkpoint['best_prec1']
-            model.load_state_dict(checkpoint['state_dict'])
-            optim_state_dict = checkpoint.get('optim_state_dict', None)
-            logging.info("loaded checkpoint '%s' (epoch %s)",
-                         checkpoint_file, checkpoint['epoch'])
-        else:
-            logging.error("no checkpoint found at '%s'", args.resume)
-    else:
-        optim_state_dict = None
+    # # optionally resume from a checkpoint
+    # if args.evaluate:
+    #     if not path.isfile(args.evaluate):
+    #         parser.error('invalid checkpoint: {}'.format(args.evaluate))
+    #     checkpoint = torch.load(args.evaluate, map_location="cpu")
+    #     # Overrride configuration with checkpoint info
+    #     args.model = checkpoint.get('model', args.model)
+    #     args.model_config = checkpoint.get('config', args.model_config)
+    #     # load checkpoint
+    #     model.load_state_dict(checkpoint['state_dict'])
+    #     logging.info("loaded checkpoint '%s' (epoch %s)",
+    #                  args.evaluate, checkpoint['epoch'])
+    #
+    # if args.resume:
+    #     checkpoint_file = args.resume
+    #     if path.isdir(checkpoint_file):
+    #         results.load(path.join(checkpoint_file, 'results.csv'))
+    #         checkpoint_file = path.join(
+    #             checkpoint_file, 'model_best.pth.tar')
+    #     if path.isfile(checkpoint_file):
+    #         logging.info("loading checkpoint '%s'", args.resume)
+    #         checkpoint = torch.load(checkpoint_file, map_location="cpu")
+    #         if args.start_epoch < 0:  # not explicitly set
+    #             args.start_epoch = checkpoint['epoch']
+    #         best_prec1 = checkpoint['best_prec1']
+    #         model.load_state_dict(checkpoint['state_dict'])
+    #         optim_state_dict = checkpoint.get('optim_state_dict', None)
+    #         logging.info("loaded checkpoint '%s' (epoch %s)",
+    #                      checkpoint_file, checkpoint['epoch'])
+    #     else:
+    #         logging.error("no checkpoint found at '%s'", args.resume)
+    # else:
+    #     optim_state_dict = None
 
     # define loss function (criterion) and optimizer
     loss_params = {}
@@ -241,9 +241,8 @@ def main_worker(args):
     optimizer = optim_regime if isinstance(optim_regime, OptimRegime) \
         else OptimRegime(model, optim_regime, use_float_copy='half' in args.dtype)
 
-    if optim_state_dict is not None:
-        optimizer.load_state_dict(optim_state_dict)
-
+    # if optim_state_dict is not None:
+    #     optimizer.load_state_dict(optim_state_dict)
 
     trainer = Trainer(model, criterion, optimizer,
                       device_ids=args.device_ids, device=args.device, dtype=dtype,
