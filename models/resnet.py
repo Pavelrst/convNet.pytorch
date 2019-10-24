@@ -375,11 +375,13 @@ def resnet(**config):
     elif dataset == 'cifar10':
         config.setdefault('num_classes', 10)
         config.setdefault('depth', 44)
+
         return ResNet_cifar(block=BasicBlock, **config)
 
     elif dataset == 'cifar100':
         config.setdefault('num_classes', 100)
         config.setdefault('depth', 44)
+
         return ResNet_cifar(block=BasicBlock, **config)
 
 
