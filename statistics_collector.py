@@ -3,6 +3,8 @@ from torch.nn import Conv2d
 from math import sqrt, ceil, floor
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import os
 
 def register_stats_collectors(model):
     '''
@@ -29,28 +31,48 @@ def register_hist_collectors(model):
     return model
 
 
-def dump_buffers(model):
+def dump_buffers(model, res_path):
     '''
     Iterate over all layers with buffers (and hooks) and dump statistics to file.
     :param model: our model
     '''
-    # TODO: dump all collected data to csv file.
-    # TODO: save all images with corresponding names.
+    index = []
+    data = {'max': [],
+            'min': [],
+            'mean': [],
+            'std': []}
+
+    hist_data = {}
+
     for name, module in model.named_modules():
         if type(module) == Conv2d:
             print('=======', name)
             max = module._buffers['max'].cpu().item()
             min = module._buffers['min'].cpu().item()
-            for key, value in module._buffers.items():
-                if key=='hist':
-                    print('histogram')
-                    #for val in value.cpu().numpy():
-                        #print(val)
-                    x_data = np.linspace(min, max, num=201)
-                    plt.plot(x_data, module._buffers['hist'].cpu())
-                    plt.show()
-                else:
-                    print(key, value)
+            mean = module._buffers['mean'].cpu().item()
+            std = module._buffers['std']
+            hist = module._buffers['hist'].cpu()
+
+            data['max'].append(max)
+            data['min'].append(min)
+            data['mean'].append(mean)
+            data['std'].append(std)
+            index.append(name)
+
+            x_axis = np.linspace(min, max, num=201)
+
+            hist_data[name+'x_axis'] = x_axis
+            hist_data[name+'y_axis'] = hist
+
+            plt.plot(x_axis, hist)
+
+    hist_df = pd.DataFrame(data=hist_data)
+    hist_df.to_csv(os.path.join(res_path, 'histograms_data.csv'))
+    df = pd.DataFrame(data=data, index=index)
+    df.to_csv(os.path.join(res_path, 'statistics_data.csv'))
+    print(df)
+    print(hist_df)
+
 
 
 def statistic_collector_forward_hook(module, input, output):
