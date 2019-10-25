@@ -36,6 +36,11 @@ def dump_buffers(model, res_path):
     Iterate over all layers with buffers (and hooks) and dump statistics to file.
     :param model: our model
     '''
+
+    hist_pics_folder = os.path.join(res_path, 'histogram_pictures')
+    if not os.path.exists(hist_pics_folder):
+        os.mkdir(hist_pics_folder)
+
     index = []
     data = {'max': [],
             'min': [],
@@ -65,6 +70,10 @@ def dump_buffers(model, res_path):
             hist_data[name+'y_axis'] = hist
 
             plt.plot(x_axis, hist)
+            plot_path = name + '_hist.PNG'
+            plot_path = os.path.join(hist_pics_folder, plot_path)
+            plt.savefig(plot_path)
+            plt.clf()
 
     hist_df = pd.DataFrame(data=hist_data)
     hist_df.to_csv(os.path.join(res_path, 'histograms_data.csv'))
