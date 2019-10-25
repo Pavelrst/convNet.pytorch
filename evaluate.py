@@ -118,7 +118,12 @@ def main_worker(args):
     torch.manual_seed(args.seed)
     time_stamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     if args.eval_path:
-        args.results_dir = '/tmp'
+        args.results_dir = os.path.join(args.results_dir, 'evaluating_results')
+    else:
+        args.results_dir = os.path.join(args.results_dir, 'training_results')
+    if not os.path.exists(args.results_dir):
+        os.mkdir(args.results_dir)
+
     if args.save is '':
         args.save = time_stamp
     save_path = os.path.join(args.results_dir, args.save)
@@ -158,8 +163,7 @@ def main_worker(args):
                 model = register_hist_collectors(model)
                 _ = eval_checkpoint(args, model, criterion)['prec1']
 
-            dump_buffers(model)
-
+            dump_buffers(model, save_path)
         for perc, res in zip(args.pruning_percs, results):
             print("prune%:", perc, " acc:", res)
 
