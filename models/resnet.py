@@ -12,6 +12,7 @@ from utils.mixup import MixUp
 # Targeted dropout imports
 from targetedDropout import targeted_unit_dropout
 from targetedDropout import targeted_weight_dropout
+from targetedDropout import targeted_outliers_dropout
 from targetedDropout import ramping_targeted_unit_dropout
 from targetedDropout import ramping_targeted_weight_dropout
 
@@ -61,15 +62,17 @@ def weight_decay_config(value=1e-4, log=False):
 class BasicBlock(nn.Module):
 
     def __init__(self, inplanes, planes,  stride=1, expansion=1,
-                 downsample=None, groups=1, residual_block=None, dropout=0. , dropout_type = None, drop_percentage = 0. , dev = 'cpu'):
+                 downsample=None, groups=1, residual_block=None, dropout=0., dropout_type=None, drop_percentage=0., dev='cpu'):
         super(BasicBlock, self).__init__()
         # Define the dropout object
         dropout = 0 if dropout is None else dropout
 
-        if   dropout_type == 'weight':
-            self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=drop_percentage , device = dev)
+        if dropout_type == 'weight':
+            self.dropout = targeted_weight_dropout(drop_rate=dropout, targeted_percentage=drop_percentage, device=dev)
         elif dropout_type == 'unit':
-            self.dropout = targeted_unit_dropout(drop_rate=dropout  ,targeted_percentage= drop_percentage , device = dev)
+            self.dropout = targeted_unit_dropout(drop_rate=dropout, targeted_percentage=drop_percentage, device=dev)
+        elif dropout_type == 'outliers':
+            self.dropout = targeted_outliers_dropout(drop_rate=dropout, targeted_percentage=drop_percentage, device=dev)
         else:
             self.dropout = None
 
@@ -286,7 +289,7 @@ class ResNet_cifar(ResNet):
 
     def __init__(self, num_classes=10, inplanes=16,
                  block=BasicBlock, depth=32, width=[16, 32, 64],
-                 groups=[1, 1, 1], residual_block=None, regime='normal', dropout=None, mixup=False , dp_type = None , dp_percentage = None,
+                 groups=[1, 1, 1], residual_block=None, regime='normal', dropout=None, mixup=False, dp_type=None, dp_percentage=None,
                  device='cpu'):
         super(ResNet_cifar, self).__init__()
         self.inplanes = inplanes
