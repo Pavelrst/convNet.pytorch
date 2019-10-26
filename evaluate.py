@@ -11,7 +11,7 @@ import torch.utils.data
 import models
 import torch.distributed as dist
 from data import DataRegime
-from utils.log import setup_logging, ResultsLog, save_checkpoint
+from utils.log import setup_logging, ResultsLog, dump_args
 from utils.optim import OptimRegime
 from utils.cross_entropy import CrossEntropyLoss
 from utils.misc import torch_dtypes
@@ -146,6 +146,8 @@ def main_worker(args):
         cudnn.benchmark = True
     else:
         args.device_ids = None
+
+    dump_args(args, os.path.join(save_path, 'args.txt'))
 
     # Pruning and evaluating
     if len(args.pruning_percs) > 0:
