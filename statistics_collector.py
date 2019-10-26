@@ -45,26 +45,28 @@ def dump_buffers(model, res_path):
     data = {'max': [],
             'min': [],
             'mean': [],
+            'numel': [],
             'std': []}
 
     hist_data = {}
 
     for name, module in model.named_modules():
         if type(module) == Conv2d:
-            print('=======', name)
             max = module._buffers['max'].cpu().item()
             min = module._buffers['min'].cpu().item()
             mean = module._buffers['mean'].cpu().item()
             std = module._buffers['std']
+            numel = module._buffers['num']
             hist = module._buffers['hist'].cpu()
 
             data['max'].append(max)
             data['min'].append(min)
             data['mean'].append(mean)
+            data['numel'].append(numel)
             data['std'].append(std)
             index.append(name)
 
-            x_axis = np.linspace(min, max, num=201)
+            x_axis = np.linspace(min, max, num=256)
 
             hist_data[name+'x_axis'] = x_axis
             hist_data[name+'y_axis'] = hist
@@ -139,9 +141,9 @@ def histograms_collector_forward_hook(module, input, output):
     min = module._buffers['min']
 
     if 'hist' not in module._buffers.keys():
-        module._buffers['hist'] = torch.histc(output, bins=201, min=min, max=max)
+        module._buffers['hist'] = torch.histc(output, bins=256, min=min, max=max)
     else:
-        module._buffers['hist'] += torch.histc(output, bins=201, min=min, max=max)
+        module._buffers['hist'] += torch.histc(output, bins=256, min=min, max=max)
 
 
 def update_std(values, old_std, old_mean, new_mean, total_values_so_far):
