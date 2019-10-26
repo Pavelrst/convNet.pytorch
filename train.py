@@ -174,8 +174,13 @@ def main_worker(args):
         args.device_ids = None
 
 
+    # All parameters to the model should be passed via this dict.
+    model_config = {'dataset': args.dataset,
+                    'dp_type': args.dropout_type,
+                    'dp_percentage': args.dropout_perc,
+                    'dropout': args.drop_rate,
+                    'device': args.device}
 
-    model_config = {'dataset': args.dataset}
     if args.model_config is not '':
         model_config = dict(model_config, **literal_eval(args.model_config))
 
