@@ -6,11 +6,11 @@ import  numpy as np
 
 
 class _targetedDropout(Module):
-    def __init__(self, drop_rate, targeted_percentage, device='cpu' , inplace=False):
+    def __init__(self, drop_rate, targeted_percentage, device='cpu', inplace=False):
         super(_targetedDropout, self).__init__()
         if drop_rate < 0 or drop_rate > 1:
             raise ValueError("dropout probability has to be between 0 and 1, "
-                             "but got {}".format(p))
+                             "but got {}".format(drop_rate))
         self.p = drop_rate
         self.targeted_percentage = targeted_percentage
         self.inplace = inplace
@@ -183,6 +183,44 @@ class targeted_unit_dropout(_targetedDropout):
             print("Test passed - with respect to tolerance")
         else:
             print("Test FAILED")
+
+class targeted_outliers_dropout(_targetedDropout):
+    '''
+    This function drops outliers
+    just drop high numbers.
+    '''
+    def forward(self, input , is_training):
+        Test = False
+
+        if self.targeted_percentage == 0:
+            # Equal to not doing dropout.
+            # It's true for both train and test phase.
+            return input
+
+        initial_shape = input.shape
+        input = input.view(initial_shape[0], -1)
+
+        max_threshold = torch.mean(input) + torch.std(input)
+        min_threshold = torch.mean(input) - torch.std(input)
+
+        # target = targeted to be propped.
+        target_mask = torch.where((input > max_threshold) | (input < min_threshold),
+                                  torch.ones(input.shape, device=self.device),
+                                  torch.zeros(input.shape, device=self.device))
+
+        dp_mask = (1 - self.p < torch.empty(input.shape, device=self.device).uniform_(0, 1))
+
+        total_mask = torch.where((dp_mask.byte() & target_mask.byte()),
+                             torch.zeros(input.shape, device=self.device), torch.ones(input.shape, device=self.device)).to(self.device)
+
+        after_dropout = total_mask * input.to(self.device)
+
+        # if Test:
+        #     self.self_test(input, after_dropout, threshold)
+
+        final_weights = after_dropout.view(initial_shape)
+        return final_weights
+
 
 class ramping_targeted_weight_dropout(_targetedDropout):
     '''
