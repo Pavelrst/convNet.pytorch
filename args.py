@@ -36,6 +36,7 @@ class default_args():
         self.adapt_grad_norm = None
         self.tensorwatch = False
         self.start_epoch = -1
+        self.drop_optim_state = False
 
 class default_td_args(default_args):
     '''
