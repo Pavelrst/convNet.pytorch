@@ -332,7 +332,7 @@ def main_worker(args):
             'state_dict': model.state_dict(),
             'optim_state_dict': optim_state_dict,
             'best_prec1': best_prec1
-        }, is_best, path=save_path, save_all=args.save_all)
+        }, is_best, path=save_path, save_all=False)
 
         logging.info('\nResults - Epoch: {0}\n'
                      'Training Loss {train[loss]:.4f} \t'
